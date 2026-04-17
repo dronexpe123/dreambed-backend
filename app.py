@@ -10,8 +10,8 @@ app = Flask(__name__)
 CORS(app)
 
 # ===== CONFIGURACION =====
-CALLMEBOT_PHONE  = os.environ.get('CALLMEBOT_PHONE', '')   # tu número con código país ej: 59175844279
-CALLMEBOT_APIKEY = os.environ.get('CALLMEBOT_APIKEY', '')  # apikey que te mandó el bot
+TELEGRAM_TOKEN   = os.environ.get('TELEGRAM_TOKEN', '')
+TELEGRAM_CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID', '')
 DB_PATH = os.environ.get('DB_PATH', 'dreambed.db')
 
 # ===== BASE DE DATOS =====
@@ -62,22 +62,21 @@ def init_db():
     conn.commit()
     conn.close()
 
-# ===== WHATSAPP =====
-def send_whatsapp(message):
-    if not CALLMEBOT_PHONE or not CALLMEBOT_APIKEY:
-        print('CallMeBot no configurado, saltando WhatsApp')
+# ===== TELEGRAM =====
+def send_telegram(message):
+    if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
+        print('Telegram no configurado, saltando notificación')
         return
     try:
-        url = f"https://api.callmebot.com/whatsapp.php"
-        params = {
-            'phone': CALLMEBOT_PHONE,
+        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+        requests.post(url, json={
+            'chat_id': TELEGRAM_CHAT_ID,
             'text': message,
-            'apikey': CALLMEBOT_APIKEY
-        }
-        requests.get(url, params=params, timeout=10)
-        print('WhatsApp enviado OK')
+            'parse_mode': 'Markdown'
+        }, timeout=10)
+        print('Telegram enviado OK')
     except Exception as e:
-        print(f'Error enviando WhatsApp: {e}')
+        print(f'Error enviando Telegram: {e}')
 
 # ===== PRODUCTOS =====
 @app.route('/api/products', methods=['GET'])
@@ -211,7 +210,7 @@ def create_reservation():
         f"Precio: Bs {product['price']}\n"
         f"Válida hasta: {expires_at[:10]}"
     )
-    send_whatsapp(msg)
+    send_telegram(msg)
 
     return jsonify({
         'ok': True,
