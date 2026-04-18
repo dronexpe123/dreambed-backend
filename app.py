@@ -24,52 +24,97 @@ cloudinary.config(
 
 # ===== BASE DE DATOS =====
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+    db_url = os.environ.get('DATABASE_URL', '')
+    if db_url:
+        import psycopg2
+        conn = psycopg2.connect(db_url)
+        return conn
+    else:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        return conn
 
 def init_db():
-    conn = get_db()
-    c = conn.cursor()
+    db_url = os.environ.get('DATABASE_URL', '')
+    if db_url:
+        import psycopg2
+        conn = psycopg2.connect(db_url)
+        c = conn.cursor()
+        c.execute('''CREATE TABLE IF NOT EXISTS products (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            type TEXT NOT NULL,
+            size TEXT,
+            price REAL NOT NULL,
+            stock INTEGER DEFAULT 0,
+            active INTEGER DEFAULT 1,
+            colors TEXT DEFAULT '[]',
+            image TEXT DEFAULT '',
+            code TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''')
+        c.execute('''CREATE TABLE IF NOT EXISTS reservations (
+            id TEXT PRIMARY KEY,
+            product_id TEXT NOT NULL,
+            product_name TEXT NOT NULL,
+            color TEXT,
+            client_name TEXT NOT NULL,
+            client_phone TEXT NOT NULL,
+            location TEXT NOT NULL,
+            quantity INTEGER DEFAULT 1,
+            price REAL NOT NULL,
+            status TEXT DEFAULT 'pending',
+            expires_at TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''')
+        c.execute('''CREATE TABLE IF NOT EXISTS locations (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            address TEXT NOT NULL,
+            cost REAL DEFAULT 0
+        )''')
+        conn.commit()
+        conn.close()
+    else:
+        conn = get_db()
+        c = conn.cursor()
+        c.execute('''CREATE TABLE IF NOT EXISTS products (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            type TEXT NOT NULL,
+            size TEXT,
+            price REAL NOT NULL,
+            stock INTEGER DEFAULT 0,
+            active INTEGER DEFAULT 1,
+            colors TEXT DEFAULT '[]',
+            image TEXT DEFAULT '',
+            code TEXT DEFAULT '',
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )''')
+        c.execute('''CREATE TABLE IF NOT EXISTS reservations (
+            id TEXT PRIMARY KEY,
+            product_id TEXT NOT NULL,
+            product_name TEXT NOT NULL,
+            color TEXT,
+            client_name TEXT NOT NULL,
+            client_phone TEXT NOT NULL,
+            location TEXT NOT NULL,
+            quantity INTEGER DEFAULT 1,
+            price REAL NOT NULL,
+            status TEXT DEFAULT 'pending',
+            expires_at TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )''')
+        c.execute('''CREATE TABLE IF NOT EXISTS locations (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            address TEXT NOT NULL,
+            cost REAL DEFAULT 0
+        )''')
+        conn.commit()
+        conn.close()
 
-    c.execute('''CREATE TABLE IF NOT EXISTS products (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        type TEXT NOT NULL,
-        size TEXT,
-        price REAL NOT NULL,
-        stock INTEGER DEFAULT 0,
-        active INTEGER DEFAULT 1,
-        colors TEXT DEFAULT '[]',
-        image TEXT DEFAULT '',
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP
-    )''')
-
-    c.execute('''CREATE TABLE IF NOT EXISTS reservations (
-        id TEXT PRIMARY KEY,
-        product_id TEXT NOT NULL,
-        product_name TEXT NOT NULL,
-        color TEXT,
-        client_name TEXT NOT NULL,
-        client_phone TEXT NOT NULL,
-        location TEXT NOT NULL,
-        quantity INTEGER DEFAULT 1,
-        price REAL NOT NULL,
-        status TEXT DEFAULT 'pending',
-        expires_at TEXT NOT NULL,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP
-    )''')
-
-    c.execute('''CREATE TABLE IF NOT EXISTS locations (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        address TEXT NOT NULL,
-        cost REAL DEFAULT 0
-    )''')
-
-    conn.commit()
-    conn.close()
-
+        
 # ===== TELEGRAM =====
 def send_telegram(message):
     if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
