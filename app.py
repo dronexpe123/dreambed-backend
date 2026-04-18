@@ -4,6 +4,8 @@ import sqlite3
 import requests
 import os
 import uuid
+import cloudinary
+import cloudinary.uploader
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
@@ -13,6 +15,12 @@ CORS(app)
 TELEGRAM_TOKEN   = os.environ.get('TELEGRAM_TOKEN', '')
 TELEGRAM_CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID', '')
 DB_PATH = os.environ.get('DB_PATH', 'dreambed.db')
+
+cloudinary.config(
+    cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME', ''),
+    api_key    = os.environ.get('CLOUDINARY_API_KEY', ''),
+    api_secret = os.environ.get('CLOUDINARY_API_SECRET', '')
+)
 
 # ===== BASE DE DATOS =====
 def get_db():
@@ -285,6 +293,22 @@ def delete_location(loc_id):
     conn.commit()
     conn.close()
     return jsonify({'ok': True})
+
+# ===== IMAGENES =====
+@app.route('/api/upload', methods=['POST'])
+def upload_image():
+    if 'file' not in request.files:
+        return jsonify({'ok': False, 'error': 'No se envió archivo'}), 400
+    file = request.files['file']
+    try:
+        result = cloudinary.uploader.upload(
+            file,
+            folder='dreambed',
+            transformation=[{'width': 800, 'crop': 'limit'}]
+        )
+        return jsonify({'ok': True, 'url': result['secure_url']})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
 
 # ===== HEALTH CHECK =====
 @app.route('/')
