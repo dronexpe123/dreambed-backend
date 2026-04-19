@@ -201,16 +201,17 @@ def create_reservation():
           (data['product_id'],), commit=True)
 
     msg = (
-        f"🛏️ *Nueva reserva DreamBed*\n"
-        f"ID: {reservation_id}\n"
-        f"Producto: {product['name']}\n"
-        f"Color: {data['color']}\n"
-        f"Cliente: {data['client_name']}\n"
-        f"Teléfono: {data['client_phone']}\n"
-        f"Punto: {data['location']}\n"
-        f"Precio: Bs {product['price']}\n"
-        f"Válida hasta: {expires_at[:10]}"
-    )
+    f"🛏️ *Nueva reserva DreamBed*\n"
+    f"ID: {reservation_id}\n"
+    f"Producto: {product['name']}\n"
+    f"Color: {data['color']}\n"
+    f"Cliente: {data['client_name']}\n"
+    f"Teléfono: {data['client_phone']}\n"
+    f"Punto: {data['location']}\n"
+    f"Precio: Bs {product['price']}\n"
+    f"Válida hasta: {expires_at[:10]}\n"
+    + (f"📝 Nota: {data['note']}" if data.get('note') else '')
+)
     send_telegram(msg)
 
     return jsonify({'ok': True, 'reservation_id': reservation_id, 'expires_at': expires_at})
