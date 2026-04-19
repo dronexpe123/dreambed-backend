@@ -256,6 +256,103 @@ def create_reservation():
 
     return jsonify({'ok': True, 'reservation_id': reservation_id, 'expires_at': expires_at})
 
+
+@app.route('/api/reservations/batch', methods=['POST'])
+def create_reservation_batch():
+    data = request.json
+    items = data.get('items', [])
+    if not items:
+        return jsonify({'ok': False, 'error': 'Sin productos'}), 400
+
+    required_fields = ['client_name', 'client_phone', 'location', 'days']
+    for field in required_fields:
+        if not data.get(field):
+            return jsonify({'ok': False, 'error': f'Falta {field}'}), 400
+
+    reservation_ids = []
+    products_info = []
+    total = 0
+
+    for item in items:
+        product = query('SELECT * FROM products WHERE id = ? AND active = 1',
+                       (item['product_id'],), fetchone=True)
+        if not product:
+            continue
+        if product['stock'] <= 0:
+            continue
+
+        qty = item.get('quantity', 1)
+        reservation_id = 'RES-' + str(uuid.uuid4())[:6].upper()
+        days = data.get('days', 3)
+        expires_at = (datetime.now() + timedelta(days=days)).isoformat()
+
+        query('''INSERT INTO reservations
+            (id, product_id, product_name, color, client_name, client_phone,
+             location, quantity, price, expires_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+            (reservation_id, item['product_id'], product['name'],
+             item['color'], data['client_name'], data['client_phone'],
+             data['location'], qty, product['price'], expires_at),
+            commit=True)
+
+        query('UPDATE products SET stock = stock - ? WHERE id = ?',
+            (qty, item['product_id']), commit=True)
+
+        reservation_ids.append(reservation_id)
+        subtotal = product['price'] * qty
+        total += subtotal
+        products_info.append({
+            'name': product['name'],
+            'code': product.get('code', ''),
+            'color': item['color'],
+            'qty': qty,
+            'price': product['price'],
+            'subtotal': subtotal,
+            'image': product.get('image', '')
+        })
+
+    if not reservation_ids:
+        return jsonify({'ok': False, 'error': 'No se pudo reservar ningún producto'}), 400
+
+    # primera imagen disponible
+    photo_url = None
+    for p in products_info:
+        try:
+            import json as _json
+            imgs = _json.loads(p['image'] or '[]')
+            if isinstance(imgs, list) and imgs:
+                photo_url = imgs[0]
+                break
+        except:
+            if p['image']:
+                photo_url = p['image']
+                break
+
+    # armar mensaje único
+    items_text = '\n'.join([
+        f"  • {p['name']} ({p['code']}) x{p['qty']} — Color: {p['color']} — Bs {p['subtotal']}"
+        for p in products_info
+    ])
+
+    msg = (
+        f"🛏️ *Nueva reserva DreamBed*\n"
+        f"*IDs:* `{', '.join(reservation_ids)}`\n\n"
+        f"*Productos:*\n{items_text}\n\n"
+        f"*Total: Bs {total}*\n\n"
+        f"*Cliente:* {data['client_name']}\n"
+        f"*Teléfono:* {data['client_phone']}\n"
+        f"*Punto:* {data['location']}\n"
+        f"*Días:* {data.get('days', 3)}\n"
+        + (f"*Nota:* {data['note']}" if data.get('note') else '')
+    )
+    send_telegram(msg, photo_url=photo_url)
+
+    return jsonify({
+        'ok': True,
+        'reservation_ids': reservation_ids,
+        'expires_at': expires_at
+    })
+
 @app.route('/api/reservations/<res_id>/confirm', methods=['PUT'])
 @require_admin
 def confirm_reservation(res_id):
