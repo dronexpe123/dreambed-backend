@@ -10,6 +10,18 @@ import cloudinary.uploader
 app = Flask(__name__)
 CORS(app)
 
+ADMIN_KEY = os.environ.get('ADMIN_KEY', 'cambiar-esta-clave')
+
+def require_admin(f):
+    from functools import wraps
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        key = request.headers.get('X-Admin-Key', '')
+        if key != ADMIN_KEY:
+            return jsonify({'ok': False, 'error': 'No autorizado'}), 401
+        return f(*args, **kwargs)
+    return decorated
+
 # ===== CONFIGURACION =====
 TELEGRAM_TOKEN   = os.environ.get('TELEGRAM_TOKEN', '')
 TELEGRAM_CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID', '')
@@ -125,6 +137,7 @@ def get_products():
     return jsonify(products or [])
 
 @app.route('/api/products', methods=['POST'])
+@require_admin
 def create_product():
     data = request.json
     product_id = str(uuid.uuid4())[:8]
@@ -138,6 +151,7 @@ def create_product():
     return jsonify({'ok': True, 'id': product_id})
 
 @app.route('/api/products/<product_id>', methods=['PUT'])
+@require_admin 
 def update_product(product_id):
     data = request.json
     query('''UPDATE products SET name=?, type=?, size=?, price=?, stock=?,
@@ -150,6 +164,7 @@ def update_product(product_id):
     return jsonify({'ok': True})
 
 @app.route('/api/products/<product_id>', methods=['DELETE'])
+@require_admin  
 def delete_product(product_id):
     query('UPDATE products SET active = 0 WHERE id = ?', (product_id,), commit=True)
     return jsonify({'ok': True})
@@ -157,6 +172,7 @@ def delete_product(product_id):
 # ===== RESERVAS =====
 @app.route('/api/reservations', methods=['GET'])
 def get_reservations():
+    expire_old_reservations()
     reservations = query('SELECT * FROM reservations ORDER BY created_at DESC', fetchall=True)
     return jsonify(reservations or [])
 
@@ -197,8 +213,8 @@ def create_reservation():
          product['price'], expires_at),
         commit=True)
 
-    query('UPDATE products SET stock = stock - 1 WHERE id = ?',
-          (data['product_id'],), commit=True)
+    query('UPDATE products SET stock = stock - ? WHERE id = ?',
+      (data.get('quantity', 1), data['product_id']), commit=True)
 
     msg = (
     f"🛏️ *Nueva reserva DreamBed*\n"
@@ -217,11 +233,13 @@ def create_reservation():
     return jsonify({'ok': True, 'reservation_id': reservation_id, 'expires_at': expires_at})
 
 @app.route('/api/reservations/<res_id>/confirm', methods=['PUT'])
+@require_admin
 def confirm_reservation(res_id):
     query("UPDATE reservations SET status = 'confirmed' WHERE id = ?", (res_id,), commit=True)
     return jsonify({'ok': True})
 
 @app.route('/api/reservations/<res_id>', methods=['DELETE'])
+@require_admin 
 def delete_reservation(res_id):
     res = query('SELECT * FROM reservations WHERE id = ?', (res_id,), fetchone=True)
     if res:
@@ -237,6 +255,7 @@ def get_locations():
     return jsonify(locations or [])
 
 @app.route('/api/locations', methods=['POST'])
+@require_admin
 def create_location():
     data = request.json
     loc_id = str(uuid.uuid4())[:8]
@@ -246,6 +265,7 @@ def create_location():
     return jsonify({'ok': True, 'id': loc_id})
 
 @app.route('/api/locations/<loc_id>', methods=['PUT'])
+@require_admin 
 def update_location(loc_id):
     data = request.json
     query('UPDATE locations SET name=?, address=?, cost=? WHERE id=?',
@@ -254,6 +274,7 @@ def update_location(loc_id):
     return jsonify({'ok': True})
 
 @app.route('/api/locations/<loc_id>', methods=['DELETE'])
+@require_admin
 def delete_location(loc_id):
     query('DELETE FROM locations WHERE id = ?', (loc_id,), commit=True)
     return jsonify({'ok': True})
@@ -278,6 +299,13 @@ def upload_image():
 @app.route('/')
 def index():
     return jsonify({'status': 'DreamBed API corriendo OK'})
+
+def expire_old_reservations():
+    now = datetime.now().isoformat()
+    query(
+        "UPDATE reservations SET status = 'expired' WHERE status = 'pending' AND expires_at < ?",
+        (now,), commit=True
+    )
 
 init_db()
 
