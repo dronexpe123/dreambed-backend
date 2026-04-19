@@ -267,8 +267,8 @@ def confirm_reservation(res_id):
 def delete_reservation(res_id):
     res = query('SELECT * FROM reservations WHERE id = ?', (res_id,), fetchone=True)
     if res:
-        query('UPDATE products SET stock = stock + 1 WHERE id = ?',
-              (res['product_id'],), commit=True)
+        query('UPDATE products SET stock = stock + ? WHERE id = ?',
+              (res.get('quantity', 1), res['product_id']), commit=True)
     query('DELETE FROM reservations WHERE id = ?', (res_id,), commit=True)
     return jsonify({'ok': True})
 
