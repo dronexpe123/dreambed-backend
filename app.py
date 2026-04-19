@@ -214,7 +214,7 @@ def create_reservation():
         commit=True)
 
     query('UPDATE products SET stock = stock - ? WHERE id = ?',
-      (data.get('quantity', 1), data['product_id']), commit=True)
+        (data.get('quantity', 1), data['product_id']), commit=True)
 
     msg = (
     f"🛏️ *Nueva reserva DreamBed*\n"
