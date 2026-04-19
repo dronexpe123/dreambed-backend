@@ -88,6 +88,7 @@ def init_db():
             colors TEXT DEFAULT '[]',
             image TEXT DEFAULT '',
             code TEXT DEFAULT '',
+            figura TEXT DEFAULT '',
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )''')
         cur.execute('''CREATE TABLE IF NOT EXISTS reservations (
@@ -115,21 +116,29 @@ def init_db():
         conn.close()
 
 # ===== TELEGRAM =====
-def send_telegram(message):
+def send_telegram(message, photo_url=None):
     if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
         print('Telegram no configurado')
         return
     try:
-        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-        requests.post(url, json={
-            'chat_id': TELEGRAM_CHAT_ID,
-            'text': message,
-            'parse_mode': 'Markdown'
-        }, timeout=10)
+        if photo_url:
+            url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendPhoto"
+            requests.post(url, json={
+                'chat_id': TELEGRAM_CHAT_ID,
+                'photo': photo_url,
+                'caption': message,
+                'parse_mode': 'Markdown'
+            }, timeout=10)
+        else:
+            url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+            requests.post(url, json={
+                'chat_id': TELEGRAM_CHAT_ID,
+                'text': message,
+                'parse_mode': 'Markdown'
+            }, timeout=10)
         print('Telegram enviado OK')
     except Exception as e:
         print(f'Error Telegram: {e}')
-
 # ===== PRODUCTOS =====
 @app.route('/api/products', methods=['GET'])
 def get_products():
@@ -141,12 +150,12 @@ def get_products():
 def create_product():
     data = request.json
     product_id = str(uuid.uuid4())[:8]
-    query('''INSERT INTO products (id, name, type, size, price, stock, colors, image, code)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+    query('''INSERT INTO products (id, name, type, size, price, stock, colors, image, code, figura)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
         (product_id, data['name'], data['type'], data.get('size',''),
          data['price'], data.get('stock', 0),
          data.get('colors', '[]'), data.get('image', ''),
-         data.get('code', '')),
+         data.get('code', ''), data.get('figura', '')),
         commit=True)
     return jsonify({'ok': True, 'id': product_id})
 
@@ -155,11 +164,12 @@ def create_product():
 def update_product(product_id):
     data = request.json
     query('''UPDATE products SET name=?, type=?, size=?, price=?, stock=?,
-        colors=?, image=?, active=?, code=? WHERE id=?''',
+        colors=?, image=?, active=?, code=?, figura=? WHERE id=?''',
         (data['name'], data['type'], data.get('size',''),
          data['price'], data.get('stock', 0),
          data.get('colors','[]'), data.get('image',''),
-         data.get('active', 1), data.get('code',''), product_id),
+         data.get('active', 1), data.get('code',''),
+         data.get('figura', ''), product_id),
         commit=True)
     return jsonify({'ok': True})
 
@@ -216,19 +226,33 @@ def create_reservation():
     query('UPDATE products SET stock = stock - ? WHERE id = ?',
         (data.get('quantity', 1), data['product_id']), commit=True)
 
+    # obtener primera imagen del producto
+    photo_url = None
+    try:
+        import json as _json
+        imgs = _json.loads(product['image'] or '[]')
+        if isinstance(imgs, list) and imgs:
+            photo_url = imgs[0]
+        elif isinstance(imgs, str) and imgs:
+            photo_url = imgs
+    except:
+        photo_url = product['image'] or None
+
     msg = (
-    f"🛏️ *Nueva reserva DreamBed*\n"
-    f"ID: {reservation_id}\n"
-    f"Producto: {product['name']}\n"
-    f"Color: {data['color']}\n"
-    f"Cliente: {data['client_name']}\n"
-    f"Teléfono: {data['client_phone']}\n"
-    f"Punto: {data['location']}\n"
-    f"Precio: Bs {product['price']}\n"
-    f"Válida hasta: {expires_at[:10]}\n"
-    + (f"📝 Nota: {data['note']}" if data.get('note') else '')
-)
-    send_telegram(msg)
+        f"🛏️ *Nueva reserva DreamBed*\n"
+        f"*ID Reserva:* `{reservation_id}`\n"
+        f"*Código producto:* `{product.get('code', 'Sin código')}`\n"
+        f"*Producto:* {product['name']}\n"
+        f"*Figura/Color:* {data['color']}\n"
+        f"*Cliente:* {data['client_name']}\n"
+        f"*Teléfono:* {data['client_phone']}\n"
+        f"*Punto:* {data['location']}\n"
+        f"*Cantidad:* {data.get('quantity', 1)}\n"
+        f"*Precio:* Bs {product['price']}\n"
+        f"*Válida hasta:* {expires_at[:10]}\n"
+        + (f"*Nota:* {data['note']}" if data.get('note') else '')
+    )
+    send_telegram(msg, photo_url=photo_url)
 
     return jsonify({'ok': True, 'reservation_id': reservation_id, 'expires_at': expires_at})
 
