@@ -114,6 +114,19 @@ def init_db():
             lng REAL DEFAULT NULL
         )''')
         conn.commit()
+
+        # Agregar columnas lat/lng si no existen
+        try:
+            cur.execute('ALTER TABLE locations ADD COLUMN lat REAL DEFAULT NULL')
+            conn.commit()
+        except:
+            pass
+        try:
+            cur.execute('ALTER TABLE locations ADD COLUMN lng REAL DEFAULT NULL')
+            conn.commit()
+        except:
+            pass
+
     finally:
         conn.close()
 
