@@ -113,6 +113,10 @@ def init_db():
             lat REAL DEFAULT NULL,
             lng REAL DEFAULT NULL
         )''')
+        cur.execute('''CREATE TABLE IF NOT EXISTS config (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        )''')
         conn.commit()
 
         # Agregar columnas lat/lng si no existen
@@ -442,6 +446,34 @@ def update_location(loc_id):
 @require_admin
 def delete_location(loc_id):
     query('DELETE FROM locations WHERE id = ?', (loc_id,), commit=True)
+    return jsonify({'ok': True})
+
+# ===== CONFIG =====
+@app.route('/api/config', methods=['GET'])
+def get_config():
+    rows = query('SELECT * FROM config', fetchall=True)
+    result = {}
+    for row in (rows or []):
+        try:
+            import json as _json
+            result[row['key']] = _json.loads(row['value'])
+        except:
+            result[row['key']] = row['value']
+    return jsonify(result)
+
+@app.route('/api/config', methods=['PUT'])
+@require_admin
+def update_config():
+    import json as _json
+    data = request.json
+    for key, value in data.items():
+        existing = query('SELECT key FROM config WHERE key = ?', (key,), fetchone=True)
+        if existing:
+            query('UPDATE config SET value = ? WHERE key = ?',
+                (_json.dumps(value), key), commit=True)
+        else:
+            query('INSERT INTO config (key, value) VALUES (?, ?)',
+                (key, _json.dumps(value)), commit=True)
     return jsonify({'ok': True})
 
 # ===== IMAGENES =====
