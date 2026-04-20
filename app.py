@@ -283,21 +283,7 @@ def create_reservation():
         f"*Válida hasta:* {expires_at[:10]}\n"
         + (f"*Nota:* {data['note']}" if data.get('note') else '')
     )
-    # Recolectar todas las imágenes de todos los productos
-    all_photos = []
-    for p in products_info:
-        try:
-            import json as _json
-            imgs = _json.loads(p['image'] or '[]')
-            if isinstance(imgs, list) and imgs:
-                all_photos.append(imgs[0])
-            elif p['image']:
-                all_photos.append(p['image'])
-        except:
-            if p['image']:
-                all_photos.append(p['image'])
-
-    send_telegram(msg, photo_urls=all_photos if all_photos else None)
+    send_telegram(msg, photo_urls=[photo_url] if photo_url else None)
 
     return jsonify({'ok': True, 'reservation_id': reservation_id, 'expires_at': expires_at})
 
@@ -390,7 +376,20 @@ def create_reservation_batch():
         f"*Días:* {data.get('days', 3)}\n"
         + (f"*Nota:* {data['note']}" if data.get('note') else '')
     )
-    send_telegram(msg, photo_urls=[photo_url] if photo_url else None)
+    all_photos = []
+    for p in products_info:
+        try:
+            import json as _json
+            imgs = _json.loads(p['image'] or '[]')
+            if isinstance(imgs, list) and imgs:
+                all_photos.append(imgs[0])
+            elif p['image']:
+                all_photos.append(p['image'])
+        except:
+            if p['image']:
+                all_photos.append(p['image'])
+
+    send_telegram(msg, photo_urls=all_photos if all_photos else None)
 
     return jsonify({
         'ok': True,
