@@ -109,7 +109,9 @@ def init_db():
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
             address TEXT NOT NULL,
-            cost REAL DEFAULT 0
+            cost REAL DEFAULT 0,
+            lat REAL DEFAULT NULL,
+            lng REAL DEFAULT NULL
         )''')
         conn.commit()
     finally:
@@ -380,8 +382,8 @@ def get_locations():
 def create_location():
     data = request.json
     loc_id = str(uuid.uuid4())[:8]
-    query('INSERT INTO locations (id, name, address, cost) VALUES (?, ?, ?, ?)',
-        (loc_id, data['name'], data['address'], data.get('cost', 0)),
+    query('INSERT INTO locations (id, name, address, cost, lat, lng) VALUES (?, ?, ?, ?, ?, ?)',
+        (loc_id, data['name'], data['address'], data.get('cost', 0), data.get('lat'), data.get('lng')),
         commit=True)
     return jsonify({'ok': True, 'id': loc_id})
 
@@ -389,8 +391,8 @@ def create_location():
 @require_admin 
 def update_location(loc_id):
     data = request.json
-    query('UPDATE locations SET name=?, address=?, cost=? WHERE id=?',
-        (data['name'], data['address'], data.get('cost', 0), loc_id),
+    query('UPDATE locations SET name=?, address=?, cost=?, lat=?, lng=? WHERE id=?',
+        (data['name'], data['address'], data.get('cost', 0), data.get('lat'), data.get('lng'), loc_id),
         commit=True)
     return jsonify({'ok': True})
 
