@@ -131,16 +131,30 @@ def init_db():
         conn.close()
 
 # ===== TELEGRAM =====
-def send_telegram(message, photo_url=None):
+def send_telegram(message, photo_urls=None):
     if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
         print('Telegram no configurado')
         return
     try:
-        if photo_url:
+        if photo_urls and len(photo_urls) > 1:
+            # Enviar media group con múltiples fotos
+            media = []
+            for i, url in enumerate(photo_urls[:10]):
+                item = {'type': 'photo', 'media': url}
+                if i == 0:
+                    item['caption'] = message
+                    item['parse_mode'] = 'Markdown'
+                media.append(item)
+            url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMediaGroup"
+            requests.post(url, json={
+                'chat_id': TELEGRAM_CHAT_ID,
+                'media': media
+            }, timeout=10)
+        elif photo_urls and len(photo_urls) == 1:
             url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendPhoto"
             requests.post(url, json={
                 'chat_id': TELEGRAM_CHAT_ID,
-                'photo': photo_url,
+                'photo': photo_urls[0],
                 'caption': message,
                 'parse_mode': 'Markdown'
             }, timeout=10)
@@ -154,6 +168,8 @@ def send_telegram(message, photo_url=None):
         print('Telegram enviado OK')
     except Exception as e:
         print(f'Error Telegram: {e}')
+
+
 # ===== PRODUCTOS =====
 @app.route('/api/products', methods=['GET'])
 def get_products():
@@ -267,7 +283,21 @@ def create_reservation():
         f"*Válida hasta:* {expires_at[:10]}\n"
         + (f"*Nota:* {data['note']}" if data.get('note') else '')
     )
-    send_telegram(msg, photo_url=photo_url)
+    # Recolectar todas las imágenes de todos los productos
+    all_photos = []
+    for p in products_info:
+        try:
+            import json as _json
+            imgs = _json.loads(p['image'] or '[]')
+            if isinstance(imgs, list) and imgs:
+                all_photos.append(imgs[0])
+            elif p['image']:
+                all_photos.append(p['image'])
+        except:
+            if p['image']:
+                all_photos.append(p['image'])
+
+    send_telegram(msg, photo_urls=all_photos if all_photos else None)
 
     return jsonify({'ok': True, 'reservation_id': reservation_id, 'expires_at': expires_at})
 
@@ -360,7 +390,7 @@ def create_reservation_batch():
         f"*Días:* {data.get('days', 3)}\n"
         + (f"*Nota:* {data['note']}" if data.get('note') else '')
     )
-    send_telegram(msg, photo_url=photo_url)
+    send_telegram(msg, photo_urls=[photo_url] if photo_url else None)
 
     return jsonify({
         'ok': True,
@@ -438,10 +468,18 @@ def index():
 
 def expire_old_reservations():
     now = datetime.now().isoformat()
-    query(
-        "UPDATE reservations SET status = 'expired' WHERE status = 'pending' AND expires_at < ?",
-        (now,), commit=True
+    expired = query(
+        "SELECT * FROM reservations WHERE status = 'pending' AND expires_at < ?",
+        (now,), fetchall=True
     )
+    if expired:
+        for res in expired:
+            query('UPDATE products SET stock = stock + ? WHERE id = ?',
+                (res.get('quantity', 1), res['product_id']), commit=True)
+        query(
+            "UPDATE reservations SET status = 'expired' WHERE status = 'pending' AND expires_at < ?",
+            (now,), commit=True
+        )
 
 init_db()
 
