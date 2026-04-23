@@ -8,7 +8,30 @@ import cloudinary
 import cloudinary.uploader
 
 app = Flask(__name__)
-CORS(app)
+
+# CORS — solo permitir tu dominio de Netlify
+CORS(app, resources={
+    r"/api/*": {
+        "origins": [
+            "https://dream-bed.netfily.app",  # ← cambiá por tu URL real de Netlify
+            "http://localhost:3000",
+            "http://127.0.0.1:5500"
+        ],
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "X-Admin-Key"]
+    }
+})
+
+# Security Headers
+@app.after_request
+def add_security_headers(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
+    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    return response
 
 ADMIN_KEY = os.environ.get('ADMIN_KEY', 'cambiar-esta-clave')
 
