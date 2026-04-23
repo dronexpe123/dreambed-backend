@@ -217,12 +217,19 @@ def get_products():
 @require_admin
 def create_product():
     data = request.json
+    import json as _json
     product_id = str(uuid.uuid4())[:8]
+    colors = data.get('colors','[]')
+    if not isinstance(colors, str):
+        colors = _json.dumps(colors)
+    image = data.get('image','')
+    if not isinstance(image, str):
+        image = _json.dumps(image)
     query('''INSERT INTO products (id, name, type, size, price, stock, colors, image, code, figura, description)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
         (product_id, data['name'], data['type'], data.get('size',''),
          data['price'], data.get('stock', 0),
-         data.get('colors', '[]'), data.get('image', ''),
+         colors, image,
          data.get('code', ''), data.get('figura', ''),
          data.get('description', '')),
         commit=True)
@@ -232,11 +239,18 @@ def create_product():
 @require_admin 
 def update_product(product_id):
     data = request.json
+    import json as _json
+    colors = data.get('colors','[]')
+    if not isinstance(colors, str):
+        colors = _json.dumps(colors)
+    image = data.get('image','')
+    if not isinstance(image, str):
+        image = _json.dumps(image)
     query('''UPDATE products SET name=?, type=?, size=?, price=?, stock=?,
         colors=?, image=?, active=?, code=?, figura=?, description=? WHERE id=?''',
         (data['name'], data['type'], data.get('size',''),
          data['price'], data.get('stock', 0),
-         data.get('colors','[]'), data.get('image',''),
+         colors, image,
          data.get('active', 1), data.get('code',''),
          data.get('figura', ''), data.get('description',''), product_id),
         commit=True)
