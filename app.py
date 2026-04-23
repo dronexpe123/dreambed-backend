@@ -112,6 +112,7 @@ def init_db():
             image TEXT DEFAULT '',
             code TEXT DEFAULT '',
             figura TEXT DEFAULT '',
+            description TEXT DEFAULT '',
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )''')
         cur.execute('''CREATE TABLE IF NOT EXISTS reservations (
@@ -150,6 +151,11 @@ def init_db():
             pass
         try:
             cur.execute('ALTER TABLE locations ADD COLUMN lng REAL DEFAULT NULL')
+            conn.commit()
+        except:
+            pass
+        try:
+            cur.execute("ALTER TABLE locations ADD COLUMN description TEXT DEFAULT ''")
             conn.commit()
         except:
             pass
@@ -208,12 +214,13 @@ def get_products():
 def create_product():
     data = request.json
     product_id = str(uuid.uuid4())[:8]
-    query('''INSERT INTO products (id, name, type, size, price, stock, colors, image, code, figura)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+    query('''INSERT INTO products (id, name, type, size, price, stock, colors, image, code, figura, description)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
         (product_id, data['name'], data['type'], data.get('size',''),
          data['price'], data.get('stock', 0),
          data.get('colors', '[]'), data.get('image', ''),
-         data.get('code', ''), data.get('figura', '')),
+         data.get('code', ''), data.get('figura', ''),
+         data.get('description', '')),
         commit=True)
     return jsonify({'ok': True, 'id': product_id})
 
@@ -222,12 +229,12 @@ def create_product():
 def update_product(product_id):
     data = request.json
     query('''UPDATE products SET name=?, type=?, size=?, price=?, stock=?,
-        colors=?, image=?, active=?, code=?, figura=? WHERE id=?''',
+        colors=?, image=?, active=?, code=?, figura=?, description=? WHERE id=?''',
         (data['name'], data['type'], data.get('size',''),
          data['price'], data.get('stock', 0),
          data.get('colors','[]'), data.get('image',''),
          data.get('active', 1), data.get('code',''),
-         data.get('figura', ''), product_id),
+         data.get('figura', ''), data.get('description',''), product_id),
         commit=True)
     return jsonify({'ok': True})
 
