@@ -15,7 +15,7 @@ CORS(app, resources={
         "origins": [
             "https://dream-bed.netlify.app",
             "http://localhost",
-            "http://127.0.0.1",
+            "http://127.0.0.1:5500",
             "null",
         ],
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
