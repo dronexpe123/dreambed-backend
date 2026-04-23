@@ -11,11 +11,9 @@ app = Flask(__name__)
 
 # CORS — solo permitir tu dominio de Netlify
 CORS(app, resources={
-    r"/api/*": {
+    r"/*": {
         "origins": [
-            "https://dream-bed.netlify.app/",  # ← cambiá por tu URL real de Netlify
-            "http://localhost:3000",
-            "http://127.0.0.1:5500"
+            "https://dream-bed.netlify.app",
         ],
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         "allow_headers": ["Content-Type", "X-Admin-Key"]
@@ -33,6 +31,12 @@ def add_security_headers(response):
     response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
     return response
 
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', 'https://dream-bed.netlify.app')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Admin-Key')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
+    return response
 ADMIN_KEY = os.environ.get('ADMIN_KEY', 'dreambed-admin-2026-anyet')
 
 def require_admin(f):
