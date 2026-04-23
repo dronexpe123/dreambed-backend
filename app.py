@@ -209,7 +209,11 @@ def send_telegram(message, photo_urls=None):
 # ===== PRODUCTOS =====
 @app.route('/api/products', methods=['GET'])
 def get_products():
-    products = query('SELECT * FROM products WHERE active = 1 ORDER BY created_at DESC', fetchall=True)
+    admin = request.headers.get('X-Admin-Key', '') == ADMIN_KEY
+    if admin:
+        products = query('SELECT * FROM products ORDER BY created_at DESC', fetchall=True)
+    else:
+        products = query('SELECT * FROM products WHERE active = 1 ORDER BY created_at DESC', fetchall=True)
     return jsonify(products or [])
 
 @app.route('/api/products', methods=['POST'])
@@ -545,7 +549,7 @@ def index():
     return jsonify({'status': 'DreamBed API corriendo OK'})
 
 def expire_old_reservations():
-    now = datetime.now().isoformat()
+    now = datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
     expired = query(
         "SELECT * FROM reservations WHERE status = 'pending' AND expires_at < ?",
         (now,), fetchall=True
