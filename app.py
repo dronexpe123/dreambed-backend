@@ -155,7 +155,7 @@ def init_db():
         except:
             pass
         try:
-            cur.execute("ALTER TABLE locations ADD COLUMN description TEXT DEFAULT ''")
+            cur.execute("ALTER TABLE products ADD COLUMN description TEXT DEFAULT ''")
             conn.commit()
         except:
             pass
