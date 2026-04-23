@@ -161,7 +161,8 @@ def init_db():
         try:
             cur.execute("ALTER TABLE products ADD COLUMN description TEXT DEFAULT ''")
             conn.commit()
-        except:
+        except Exception as e:
+            conn.rollback()
             pass
 
     finally:
