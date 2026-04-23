@@ -13,7 +13,7 @@ app = Flask(__name__)
 CORS(app, resources={
     r"/api/*": {
         "origins": [
-            "https://dream-bed.netfily.app",  # ← cambiá por tu URL real de Netlify
+            "https://dream-bed.netlify.app/",  # ← cambiá por tu URL real de Netlify
             "http://localhost:3000",
             "http://127.0.0.1:5500"
         ],
@@ -33,7 +33,7 @@ def add_security_headers(response):
     response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
     return response
 
-ADMIN_KEY = os.environ.get('ADMIN_KEY', 'cambiar-esta-clave')
+ADMIN_KEY = os.environ.get('ADMIN_KEY', 'dreambed-admin-2026-anyet')
 
 def require_admin(f):
     from functools import wraps
