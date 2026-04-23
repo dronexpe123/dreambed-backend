@@ -262,7 +262,11 @@ def update_product(product_id):
 @app.route('/api/products/<product_id>', methods=['DELETE'])
 @require_admin  
 def delete_product(product_id):
-    query('UPDATE products SET active = 0 WHERE id = ?', (product_id,), commit=True)
+    permanent = request.args.get('permanent', 'false') == 'true'
+    if permanent:
+        query('DELETE FROM products WHERE id = ?', (product_id,), commit=True)
+    else:
+        query('UPDATE products SET active = 0 WHERE id = ?', (product_id,), commit=True)
     return jsonify({'ok': True})
 
 # ===== RESERVAS =====
