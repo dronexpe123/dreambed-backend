@@ -147,23 +147,18 @@ def init_db():
         )''')
         conn.commit()
 
-        # Agregar columnas lat/lng si no existen
-        try:
-            cur.execute('ALTER TABLE locations ADD COLUMN lat REAL DEFAULT NULL')
-            conn.commit()
-        except:
-            pass
-        try:
-            cur.execute('ALTER TABLE locations ADD COLUMN lng REAL DEFAULT NULL')
-            conn.commit()
-        except:
-            pass
-        try:
-            cur.execute("ALTER TABLE products ADD COLUMN description TEXT DEFAULT ''")
-            conn.commit()
-        except Exception as e:
-            conn.rollback()
-            pass
+        # Agregar columnas si no existen
+        for alter_sql in [
+            'ALTER TABLE locations ADD COLUMN lat REAL DEFAULT NULL',
+            'ALTER TABLE locations ADD COLUMN lng REAL DEFAULT NULL',
+            "ALTER TABLE products ADD COLUMN description TEXT DEFAULT ''",
+            "ALTER TABLE products ADD COLUMN figura TEXT DEFAULT ''",
+        ]:
+            try:
+                cur.execute(alter_sql)
+                conn.commit()
+            except Exception:
+                conn.rollback()
 
     finally:
         conn.close()
