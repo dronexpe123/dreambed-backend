@@ -10,18 +10,7 @@ import cloudinary.uploader
 app = Flask(__name__)
 
 # CORS — solo permitir tu dominio de Netlify
-CORS(app, resources={
-    r"/*": {
-        "origins": [
-            "https://dream-bed.netlify.app",
-            "http://localhost",
-            "http://127.0.0.1:5500/dreambed-fronted/index.html",
-            "null",
-        ],
-        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        "allow_headers": ["Content-Type", "X-Admin-Key"]
-    }
-})
+
 
 # Security Headers
 @app.after_request
