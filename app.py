@@ -14,7 +14,7 @@ CORS(app, resources={
     r"/*": {
         "origins": [
             "https://dream-bed.netlify.app",
-            "https://dreambed-frontend.dronexperience123.workers.dev/",
+            "https://dreambed-frontend.dronexperience123.workers.dev",
             "http://localhost",
             "http://127.0.0.1:5500/dreambed-fronted/index.html",
             "null",
