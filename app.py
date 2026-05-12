@@ -35,12 +35,7 @@ def add_security_headers(response):
     response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
     return response
 
-@app.after_request
-def after_request(response):
-    response.headers.add('Access-Control-Allow-Origin', 'https://dream-bed.netlify.app')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Admin-Key')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
-    return response
+
 ADMIN_KEY = os.environ.get('ADMIN_KEY', 'dreambed-admin-2026-anyet')
 
 def require_admin(f):
