@@ -292,9 +292,6 @@ def create_reservation():
                    (data['product_id'],), fetchone=True)
     if not product:
         return jsonify({'ok': False, 'error': 'Producto no encontrado'}), 404
-    if product['stock'] <= 0:
-        return jsonify({'ok': False, 'error': 'Sin stock'}), 400
-
     reservation_id = 'RES-' + str(uuid.uuid4())[:6].upper()
     days = data.get('days', 3)
     expires_at = (datetime.now() + timedelta(days=days)).isoformat()
@@ -308,9 +305,6 @@ def create_reservation():
          data['location'], data.get('quantity', 1),
          product['price'], expires_at),
         commit=True)
-
-    query('UPDATE products SET stock = stock - ? WHERE id = ?',
-        (data.get('quantity', 1), data['product_id']), commit=True)
 
     # obtener primera imagen del producto
     photo_url = None
@@ -364,9 +358,6 @@ def create_reservation_batch():
                        (item['product_id'],), fetchone=True)
         if not product:
             continue
-        if product['stock'] <= 0:
-            continue
-
         qty = item.get('quantity', 1)
         reservation_id = 'RES-' + str(uuid.uuid4())[:6].upper()
         days = data.get('days', 3)
@@ -380,9 +371,6 @@ def create_reservation_batch():
              item['color'], data['client_name'], data['client_phone'],
              data['location'], qty, product['price'], expires_at),
             commit=True)
-
-        query('UPDATE products SET stock = stock - ? WHERE id = ?',
-            (qty, item['product_id']), commit=True)
 
         reservation_ids.append(reservation_id)
         subtotal = product['price'] * qty
@@ -462,9 +450,6 @@ def confirm_reservation(res_id):
 @require_admin 
 def delete_reservation(res_id):
     res = query('SELECT * FROM reservations WHERE id = ?', (res_id,), fetchone=True)
-    if res:
-        query('UPDATE products SET stock = stock + ? WHERE id = ?',
-              (res.get('quantity', 1), res['product_id']), commit=True)
     query('DELETE FROM reservations WHERE id = ?', (res_id,), commit=True)
     return jsonify({'ok': True})
 
@@ -555,9 +540,6 @@ def expire_old_reservations():
         (now,), fetchall=True
     )
     if expired:
-        for res in expired:
-            query('UPDATE products SET stock = stock + ? WHERE id = ?',
-                (res.get('quantity', 1), res['product_id']), commit=True)
         query(
             "UPDATE reservations SET status = 'expired' WHERE status = 'pending' AND expires_at < ?",
             (now,), commit=True
